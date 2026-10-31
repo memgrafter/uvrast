@@ -1,0 +1,14 @@
+[project]
+name = "uvrast"
+version = "0.1.0"
+description = "Clean-room UV-layout rasterizer with the nvdiffrast.torch rasterize/interpolate interface used by TRELLIS.2's GLB bake"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = ["torch"]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["uvrast"]
