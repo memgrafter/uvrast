@@ -2,7 +2,16 @@
 
 A clean-room replacement for the two nvdiffrast calls in the GLB texture bake of TRELLIS.2
 (`o_voxel.postprocess.to_glb`). nvdiffrast's licence allows "research or evaluation purposes" only, so a commercial
-pipeline cannot use it. uvrast gives the same three names as `nvdiffrast.torch`:
+pipeline cannot use it.
+
+![The same TRELLIS.2 prop baked with nvdiffrast (left) and with uvrast (right), two views](docs/comparison/hero-2x2.jpg)
+
+The same TRELLIS.2 mesh, baked with nvdiffrast (left) and with uvrast (right), then rendered in Blender. This is the
+worst case of the test: of 197 million baked texels, 4 differ, and the render difference is smaller than the
+renderer's own noise. 14 of 17 test GLBs are byte-identical. How it was compared, with all numbers:
+[docs/COMPARISON.md](docs/COMPARISON.md).
+
+uvrast gives the same three names as `nvdiffrast.torch`:
 
 - `RasterizeCudaContext(device=None)`: no state; kept for the API.
 - `rasterize(ctx, pos, tri, resolution)`: returns `(rast, db)`. `rast` is `[minibatch, H, W, 4]` float32 with
@@ -62,6 +71,7 @@ It needs only PyTorch. It runs on CUDA, on the CPU and on Apple MPS.
   columns and diagonals, UVs at 0 and 1, large triangles).
 - `tools/probe_nvdiffrast.py`, `tools/check_probe.py`: black-box probes of nvdiffrast and their comparison.
 - `tools/bake_compare.py`: the equality test on real TRELLIS.2 meshes.
+- `docs/COMPARISON.md`, `docs/comparison/`: how uvrast was compared with nvdiffrast, the results and the images.
 
 ## Clean-room record
 
@@ -82,35 +92,11 @@ order, the position precision (edges moved across a pixel centre in small steps)
 exactly on an edge, the tie between triangles at the same depth, degenerate triangles, and the float32 arithmetic of
 the barycentrics and of `interpolate`. The recorded outputs are evaluation data and are not in this repository.
 
-## Proof of equality (2026-10-31, RTX 3090 Ti, nvdiffrast v0.4.0 in the evaluation venv)
+## Proof of equality
 
-Probes (`tools/probe_nvdiffrast.py`, `probe_big.py`, `probe_axis.py`; checked with `check_probe.py`): 25.7M covered
-texels of synthetic shapes at 1024, 2048 and 4096 (degenerate and sliver triangles, vertices on texel centres and
-corners, vertices on 1/16, 1/256 and 1/4096 pixel grids, shared edges along rows, columns and diagonals, fans around a
-centre, UVs at 0 and 1 and past them, triangles up to 4000 pixels, 110,905 triangles in one call to test the chunk
-offsets). Triangle ids, u, v and interpolated values are bit-identical on every texel. nvdiffrast was deterministic
-in every repeat.
-
-Real meshes (`tools/bake_compare.py`; TRELLIS.2 1024_cascade, seed 42; the to_glb settings of a production
-pipeline): 16 generated props (6 of them from that pipeline) and one mesh of 994,974 faces (a prop at decimation 1M),
-each unwrapped once and baked with both rasterizers at 1024, 2048 and 4096: 51 bakes, 197,438,896 covered texels.
-
-| measure | result |
-|---|---|
-| triangle id and coverage | 4 texels differ, all at 4096 (one each in 4 props) |
-| 3D position on matching texels | bit-identical on every texel (max difference 0) |
-| four final maps (after inpaint) | 47 of 51 bakes identical; 5 texels over 1/255 in 2 bakes (4 and 1); lowest PSNR 106.9 dB |
-| GLB files at 4096 | byte-identical for 14 of 17 meshes, including all 6 pipeline props |
-| Blender renders, 34 views (the prop with the largest difference) | min PSNR 77.5 dB; control (the same GLB rendered twice): 77.2 dB, so the difference is under Cycles' own noise |
-
-Quality scores of the 6 pipeline props: not run twice, because their two GLBs are byte-identical (the same input bytes
-give the same score). The four differing texels: a triangle crosses the 2048-pixel border, and the exact position of
-the new clip vertex is within 0.001 of 1/32 pixel from a rounding midpoint (in one prop: 5237.499 sixteenths of a
-pixel).
-nvdiffrast computes it in float32 and rounds the other way; uvrast computes it exactly. To remove them, the float32
-clip arithmetic must be found with a targeted probe (not done). OpenCV's Telea inpaint (to_glb's seam fill) fills
-only uncovered texels, so a coverage difference also changes the fill near it: 3 to 4 raw texels became 2 to 35
-final texels.
+Summary: 25.7M probe texels bit-identical; 51 real bakes (197M texels) with 4 differing texels; 3D positions
+bit-identical; 14 of 17 GLBs byte-identical; render differences under the renderer's own noise. Method, full table,
+the cause of the 4 texels, images and how to reproduce: [docs/COMPARISON.md](docs/COMPARISON.md).
 
 ## Speed (same inputs, 4096, 3 repeats, minimum)
 
