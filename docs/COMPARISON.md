@@ -4,6 +4,21 @@ The question: does a TRELLIS.2 GLB baked with uvrast equal the same GLB baked wi
 allows evaluation, so nvdiffrast ran only as a black box in a separate evaluation environment
 (2026-10-31, RTX 3090 Ti, nvdiffrast v0.4.0). Its source was never read (see "Clean-room record" in the README).
 
+## Scope of the claim
+
+What this shows: in the one mode TRELLIS.2's to_glb uses (a UV layout, z = 0, w = 1, no antialiasing, no gradients),
+uvrast gives the same forward results as nvdiffrast. The renders below are only the top layer of the evidence. The
+lower layers are numerical: triangle ids, barycentrics and interpolated positions are compared per texel in float32,
+and they are bit-identical except for the 4 texels described below.
+
+What this does NOT show:
+- **Gradients.** uvrast has no designed or tested backward pass. It does not check `requires_grad` either, so any
+  gradient that autograd might produce through it is undefined: do not use it. Nothing here says anything about
+  nvdiffrast's main use, differentiable rendering.
+- **Other modes.** Perspective or 3D positions, depth tests between different depths, antialiasing, texture sampling
+  and image-space derivatives are not supported (uvrast raises an error), so they were not compared.
+- **Speed.** uvrast is slower (18 to 19 ms for nvdiffrast, 131 to 185 ms for uvrast at 4096; see the README).
+
 ## What was compared, in three levels
 
 1. **Synthetic probes** (`tools/probe_nvdiffrast.py`, `probe_big.py`, `probe_axis.py`; checked with `check_probe.py`):
@@ -54,6 +69,18 @@ difference in these 6 views is 1 of 255, the size of the renderer's own noise.
 ![nvdiffrast, uvrast and the difference x50 in 6 views](comparison/renders-6-views.jpg)
 
 The README's 2x2 image (`comparison/hero-2x2.jpg`) shows two of these views at a larger size.
+
+## Renders: fur (wolf pelt), and the renderer's own noise
+
+A wolf pelt: fine, high-frequency fur detail. Its two bakes, from the same unwrap, are byte-identical GLB files (same
+md5) and identical on every texel at 1024, 2048 and 4096 (0 coverage, id, position or map differences). So any
+difference between the two renders below is Blender Cycles' own noise, not the bake: the largest pixel difference in
+these 6 views is 7.8 of 255 (top view), PSNR 81 to 82 dB. Fine detail like fur shows more render noise than the
+smooth egg, and that noise is the floor for any render comparison.
+
+![The wolf pelt baked with nvdiffrast (left) and uvrast (right), two views](comparison/fur-2x2.jpg)
+
+![Wolf pelt: nvdiffrast, uvrast and the difference x50 in 6 views](comparison/fur-renders-6-views.jpg)
 
 ## Reproduce
 

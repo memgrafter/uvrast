@@ -8,8 +8,8 @@ pipeline cannot use it.
 
 The same TRELLIS.2 mesh, baked with nvdiffrast (left) and with uvrast (right), then rendered in Blender. This is the
 worst case of the test: of 197 million baked texels, 4 differ, and the render difference is smaller than the
-renderer's own noise. 14 of 17 test GLBs are byte-identical. How it was compared, with all numbers:
-[docs/COMPARISON.md](docs/COMPARISON.md).
+renderer's own noise. 14 of 17 test GLBs are byte-identical. The claim covers the forward bake only (no gradients).
+How it was compared, the scope of the claim, a fur example and all numbers: [docs/COMPARISON.md](docs/COMPARISON.md).
 
 uvrast gives the same three names as `nvdiffrast.torch`:
 
