@@ -107,7 +107,10 @@ def test_band_splitting_and_passes(monkeypatch):
 def test_rejects_unsupported():
     tri = torch.tensor([[0, 1, 2]], dtype=torch.int32, device=DEV)
     pos = clip(np.array([[0.1, 0.1], [0.9, 0.1], [0.1, 0.9]], np.float32))
-    bad = pos.clone(); bad[..., 3] = 2
+    bad = pos.clone(); bad[..., 3] = 2     # not a UV layout: since texturing-port it goes to the clip-space path
+    r, _ = uvrast.rasterize(None, bad, tri, [8, 8])
+    assert int((r[0, ..., 3] > 0).sum()) > 0
+    bad[0, 2, 3] = -1                      # a vertex at w <= 0 in view still raises
     with pytest.raises(NotImplementedError):
         uvrast.rasterize(None, bad, tri, [8, 8])
     with pytest.raises(NotImplementedError):
